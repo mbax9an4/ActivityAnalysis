@@ -1,0 +1,844 @@
+\documentclass[11pt]{report}
+
+%  ///////////////// INCLUDE PACKAGES HERE ///////////////////////// 
+\usepackage[pdftex]{graphicx}
+\usepackage{titlesec}
+\usepackage{filecontents}
+\usepackage{pdftex}  
+\usepackage{graphicx}  
+\usepackage{mathtools}
+\usepackage{algpseudocode}
+
+% change section and chapter title font size 
+\titleformat{\section}{\Large\bfseries}
+\titleformat{\chapter}{\LARGE\bfseries}
+
+% ///////////////// DEFINE NEW COMMANDS HERE ///////////////////
+\newcommand{\HRule}{\rule{\linewidth}{0.7mm}}
+
+
+% //////////////// HERE STARTS THE DOCUMENT /////////////////////
+\begin{document}
+
+% /////////////// START TITLE PAGE HERE ////////////////////////////
+\begin{titlepage}
+\begin{center}
+
+% include logo image 
+%\includegraphics[width=0.15\textwidth]{./logo}~\\[1cm]
+
+% //////////////// THE SUBTITLES HERE(distance between subtitles are at the end) ////////////////////////
+\textsc{\LARGE University of Manchester} \\ [1.5cm]
+\textsc{\Large Department of Computer Science} \\ [0.5cm]
+\textsc{\Large Third Year Project Report}\\[0.5cm]
+
+%Title with separating lines around them 
+\HRule \\[0.4cm]
+\textsc{\huge \bfseries Automatic Human Activity Analysis} \\ [0.4cm]
+\HRule \\[1.5cm]
+
+% Author and supervisor included here 
+\begin{minipage}{0.4\textwidth}
+\begin{flushleft} \large
+\emph{Author:}\\
+Alina-Georgiana \textsc{Neculae}
+\end{flushleft}
+\end{minipage}
+\begin{minipage}{0.4\textwidth}
+\begin{flushright} \large
+\emph{Supervisor:} \\
+Dr.~Ke \textsc{Chen}
+\end{flushright}
+\end{minipage}
+
+\vfill
+
+% today date included 
+{\large \today}
+
+% end of title page 
+\end{center}
+\end{titlepage}
+
+% //////////////// START OF ABSTRACT ////////////////
+\begin{abstract}
+Automatic Human Activity Analysis is the process of analyzing and classifying the human activity being performed in a given video, by using some automated technique. This report aims to document the development of such a system, by providing background information on several successful techniques that were investigated, and discussing the motivation behind the approach chosen to be implemented for this project. It then proceeds to describe the algorithms and formulas so that their effect on the behavior of the system is apparent. Concluding with a series of experiments meant to uncover some flaws and strengths of the implemented system. \\
+The resulting system documented by this report is an automatic human activity analysis, that is able to recognize between three human activities: `walking', `running' and `hand-clapping', that renders an accuracy of 82.35\%. This is achieved by utilizing a multi-class support vector machine classifier, that uses an accumulated squared derivative feature vector data set and slow feature functions in order to distinguish between activities. \\
+
+\end{abstract}
+
+% ////////////// START OF ACKNOWLEDGMENTS ////////////////
+\chapter*{Acknowledgments}
+First and foremost, I would like to thank Ke Chen for his continued support and careful guidance throughout this project, and for all the papers, resources and ideas he has provided. \\
+I would also like to thank my family and friends for enduring my frustrations regarding setbacks that arose during the development of this project. I wish each of them the best of luck in their future endeavors. \\
+
+\clearpage
+
+% ////////////// CREATE TABLE OF CONTENTS //////////////////
+\tableofcontents
+
+\clearpage
+
+% ///////////// LIST OF FIGURES ////////////////
+\listoffigures
+\clearpage 
+
+% //////////// LIST OF TABLES ////////////////
+\listoftables
+\clearpage
+
+% /////////// START OF INTRODUCTION CHAPTER ////////////////
+\chapter{Introduction}
+
+Human activity analysis is an important area of research in computer vision, that has shown tremendous growth in the past decade. From security and surveillance systems, to entertainment and personal archiving, the ability to recognize human activities from video content has proven its generic usability and increasing importance. \\
+The main objective of a human activity analysis system is to successfully extract information that characterizes the actions performed by the objects in the given sequence of frames. Despite its simple formulation, the problem described has proven very difficult. Some of the challenges faced are: creating a robust system that is able to manage low level recording errors, being able to recognize movement in a video and deal with the large amount of variation, of the recorded action, in viewpoint speed and scale. \\
+The method discussed in this report, Slow feature analysis, was inspired from the temporal slowness principle, and has been successfully applied for obtaining an invariant representation of a fast changing environment. \\
+
+\section{Motivation}
+
+Being able to recognize human activities in video recordings enables the automation of a large range of domains. From systems that are able to recognize suspicious behavior in airports and train stations, to patient monitoring systems and real time monitoring systems for children or elderly persons. \\
+Suppose the following situation arises: After a serious accident, a patient would need to undergo several clinical visits for the physical therapy exercises until he/she has fully recovered the necessary mobility functions for daily activities. Such visits can be avoided by using a home-centered video-based activity recognition system, that would continuously monitor the patients’ daily activities. Moreover, using such a system for monitoring even the most mundane activities, early symptoms of some diseases could be timely detected, so that diagnosis and treatment are received earlier. \\
+
+\section{Proposed approach}
+
+The aim of the proposed system is the development of an automated human activity analysis classifier, one that would be able to recognize three simple activities - `walking' , `running' and `hand-clapping', from a short video. \\
+ Many approaches have been proposed for solving the complex task of automatic human activity analysis. Several methods were studied in detail, before selecting the method implemented, the reasons for discarding the other methods will be explained in detail in later chapters. \\
+The system implemented follows an approach which was presented in a paper by Zhang Zhang and Dacheng Tao \cite{main}, and was chosen, due to the fact that it requires less processing steps, but has the potential to outperform the other techniques studied. Once the chosen method is determined, the main focus moves on deciding the appropriate machine learning technique to be used for learning and classifying the actions. Additionally, the project requires that some techniques of video processing are studied in order to extract features that are compatible with the Slow Feature Analysis method. \\
+
+\section{Chapter synopsis}
+The rest of the report will follow this structure:\\
+\textbf{Chapter 2} details the techniques considered for undertaking the proposed project and some research into techniques required for the implementation of the system\\
+\textbf{Chapter 3} contains a detailed description of each component of the system\\
+\textbf{Chapter 4} provides implementation details of the more complex elements of the approach\\
+\textbf{Chapter 5} gives an evaluation of the system and describes the methods used to appraise the tests performed\\
+\textbf{Chapter 6} shows the performance of the system and the overall results of the implementation\\
+\textbf{Chapter 7} discusses any conclusions drawn from the implementation process and presents possible extensions for the future \\
+
+\clearpage
+
+% /////////////// START OF BACKGROUND READING CHAPTER /////////////////
+\chapter{Background reading}
+This section provides some necessary background knowledge relevant to the implementation of this project, especially in relation to different approaches of extracting features from a video, in order to obtain the best classification from the system. For the purpose of maintaining the scope of the project to the field of computer vision and machine learning, techniques of capturing video content and saving it in digital format will be mentioned only briefly. \\
+
+\section{Video requirements}
+The goal of an activity recognition system is to automatically analyze and identify the action being performed in a previously unknown sequence of image frames. In a simple case, the video content provided is segmented to contain only one execution of a human activity. Therefore, the objective of the system is to correctly classify the video into its activity category. \\
+In a more general case, the video provided will contain several continuous activities that must be segmented, by identifying the starting and ending times of all occurring activities, before it would be able to start the classification process. \\
+
+\section{Human activity classification}
+Now that a first requirement of the system has been stated, we should properly define the various types of human activities. Depending on their complexity human activities can be categorized into four different levels: gestures, actions, interactions and group activities. 
+Gestures are the elementary motions undertaken by a person's body parts, they are the atomic components that create the meaningful movement of a person. A good example of a gesture is: ‘raising an arm’ or ‘moving a leg’. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{actions.png}
+    \caption{This figure shows the actions recognizable by the system, as shown in the KTH dataset.}
+    \label{fig:actions}
+\end{figure}
+
+
+Actions are single person activities, that comprise of multiple gestures organized temporally. A good example of an action would be: ‘walking’, ‘running’ or ‘hand-clapping’, which were chosen for this project to be recognized. Interactions are activities that involve two or more persons and/or objects. Some example are: ‘two people dancing’, ‘a fight between two people’. Finally, group activities are activities performed by groups composed of multiple people and/or objects, such as: ‘a group of persons marching’, ‘two groups fighting’. \cite{taxonomy}. \\
+
+\section{Taxonomy}
+In order to decide on the most suitable technique to implement, from the ones investigated, an approach based taxonomy was followed. The following figure illustrates an overview of the tree-structured taxonomy that was followed as a guideline when investigating suitable techniques for activity analysis feature extraction. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{taxonomy.png}
+    \caption{This figure shows the  hierarchical approach based taxonomy followed.}
+    \label{fig:taxonomy}
+\end{figure}
+
+Firstly the activity recognition methodologies are classified into two categories: single layered approaches and hierarchical approaches. \\
+
+\subsection{Single layered approaches}
+
+Single layered approaches enclose all techniques that represent and recognize an activity directly from the sequence of image frames provided. Due to this characteristic, single layered approaches are most suitable for recognizing gestures and actions with sequential characteristics. \\
+Based on the chosen approach to model human activities, single layered approaches are again classified into two different categories: space-time approaches and sequential approaches. \\
+
+\subsubsection{Space-time approaches}
+Space time approaches model an action as a 3D \((XYT)\) volume representation in a space time dimension, or as a set of features extracted form the volume. The video volume representation is constructed by concatenating the motion boundaries in the image frames provided along a time axis, which are then compared to measure their similarities. \\ 
+Analyzing actions directly using the constructed space time volume avoids some limitations observable in traditional techniques. Some of the problems involve the computation of the optical flow (singularities, smooth surfaces), feature tracking from one frame to the other due to self-occlusions, re-initializations or change of appearance in the shapes being analyzed,  as well as determining which are the key frames in the video provided \cite{s-t-shapes}. \\  
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{volume-app.png}
+    \caption{This figure shows  some space-time shapes for `jumping', `walking' and `running' actions.}
+    \label{fig:volume-app}
+\end{figure}
+
+Based on the type of features they use, space-time approaches are further divided into: techniques that use the shape of the volumes constructed to extract informative features, approaches that construct a motion trajectory by tracking a single point or the shape of the object through each frame of the video \cite{actions-as-objects} and methods that use local interest point descriptors in order to represent the action based on both the shape and motion of the action. \\
+
+\textbf{Space-time volumes} are used for classification as follows:\\
+From the provided training videos, the system constructs a model space-time volume to represent each activity;  once a new video is provided, the system will extract the space time volume corresponding to the activity. During classification, the new volume extracted is compared with each model constructed during training and the similarity in shape and appearance between the two models is measured. Finally, the system then assigns the new video the label of the model that was the most similar to the current video.\\ 
+One method used to extract the space time volumes is: track shape changes explicitly by stacking only the foreground regions of a person (for example: silhouettes),as a result, instead of maintaining a 3-dimensional space time volume for each frame, the same information can be extracted from the weighted 2-dimensional projections of the original 3-dimensional volume \cite{silhouettes}. \\
+
+
+\textbf{Space-time trajectories} are a variation of the space-time volume technique presented above, they are mostly used as an additional feature, alongside space-time volumes.\\
+In such a technique, a person is generally represented as a set of 2-dimensional (\(XY\)) or 3-dimensional (\(XYZ\)) set of points corresponding to the joint positions of the human body. As the movement being executed, as part of the action, changes the joint positions of the human body, the system accumulates all the changes, and constructs a 3-dimensional (\(XYT\)) or 4-dimensional (\(XYZT\)) representation of the action. \\
+One method used to extract the trajectory of the action being performed in a video is: representing the action as a set of 13 joint trajectories in a 4-dimensional \(XYZT\) space volume; an affine projection was applied in order to obtain normalized \(XYT\) trajectories of an action, which were the used to measure the view-invariant similarity between two sets of trajectories\cite{affine-trajectory}. \\
+
+\textbf{Space-time local features} are approaches that use local features extracted from 3-dimensional volumes to recognize human activities. The motivation behind this technique is that a 3-dimensional space-time volume can be considered a rigid object, and therefore, the action recognition problem transforms into an object matching problem. The process these techniques follows is: the system first needs to extract local features or interest points that capture the local motion information of the action being performed in the space-time volume, these features are then combined in order to model some spatial-temporal relationships between them, the system then can use recognition algorithms to classify the activities. \\
+One such method is: as described in \cite{local-features}, idea proposed by Chomat and Crowley, from each frame we can extract local spatial-temporal appearance features in order to describe the motion orientation of the action. Multi-dimensional histograms are constructed based on the detected features and by applying the Bayes probability rule to the histograms we can find the probability of an action occurring, given the detected local features. \\    
+
+\subsubsection{Sequential approaches}
+Sequential approaches treat a video as a sequence of observations that define the action. Such methods determine that an activity has occurred if they are able to observe a particular sequence of observations characteristic to the activity. The first step such approaches take, is to convert the video into a sequence of feature vectors that describe the status of the person in each image frame of the video. Once the feature vectors have been extracted, the sequence of vectors is analyzed in order to determine the likelihood of the vectors produced with regard to the action they describe. If the likelihood between the sequence and the activity class is high enough the system can decide that the activity has occurred. \\
+Based on the methodology used sequential approaches are again categorized into exemplar-based approaches and state-based approaches. \\
+
+\textbf{Exemplar-based approaches} represent human activities by creating a template or a set of sample sequences. The system can then compare the sequence of feature vectors extracted from the video with each template or sample sequence and based on the degree of similarity obtained, it will then choose the appropriate label for the new video. One problem that this method faces, due to its characteristics is that humans can perform the same actions in a variety of ways, as a result, the similarity between the template and the feature vector extracted needs to take into consideration these variations. \\
+One method that has adapted to solve this problem is the dynamic time warping algorithm, which was originally developed for speech processing, but has been successfully used for matching two sequences with variations. The algorithm finds an optimal nonlinear match between two sequences with a polynomial amount of computations \cite{DTW}. Along the years, many papers have been published, that suggest optimization methods for the dynamic time warping algorithm, in order to specialize the algorithm for activity recognition.\\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{exemplar-based.png}
+    \caption{This figure shows the matching between two `stretching a leg' sequences with different non-linear execution rates for an exemplar-based approach.}
+    \label{fig:exemplar-based}
+\end{figure}
+
+\textbf{State model-based approaches} are the sequential approaches that model human activities as a set of states. The model constructed is statistically trained to correspond to feature vectors belonging to its activity class. The system is able to classify actions by measuring the probability that an observed sequence of feature vectors was generated by the model. Due to the system's  method of determining the likelihood between the action model and the input image sequence, Hidden Markov Models and Dynamic Bayesian Networks have been widely used in order to recognize activities. \\
+
+This method has been widely used and has proven a powerful technique not only for activity analysis recognition but has been designed to handle more complex activities (generally combinations of multiple simple actions), by constructing Hidden Markov Models for each activity they want to recognize, using visual features from the scenes as observations, that are directly generated by the model \cite{extended-HMM}. \\
+
+\subsection{Hierarchical approaches}
+Hierarchical approaches segment the actions into sub-events, which put together could be used to describe the original complex activity. In other terms, they create several layers of simpler activities classifications, as a result, they are much more suitable for high level human activities. One such example would be a high-level interaction of `fighting' which may be recognized by detecting a sequence of `punching' and `kicking'. The main advantage offered by hierarchical approaches is that they not only make the recognition process computationally tractable and conceptually understandable but also by reusing the simple, atomical actions, they reduce the overall computational redundancy. \\
+Hierarchical approaches are again classified based on the recognition methodologies they use: statistical approaches, syntactic approaches and description-based approaches.\\
+
+\textbf{Statistical approaches} are the group of approaches that use statistical state based models such as Hidden Markov Models and Dynamic Bayesian Networks to recognize activities that have a sequential structure. The models used to recognize activities usually have two layers. At the bottom layer simple actions are recognized by using a sequence of feature vectors, just as in single-layered sequential approaches. The sequence of feature vectors are converted into a sequence of atomic actions, as a result of the first layer processing, the second layer models use the atomic actions as observations, based on which it makes its classification. \\
+For an example of a simple Hierarchical Hidden Markov Model, constructed for recognizing the activity of `punching', see Appendix A. \\ 
+The first paper to introduce the notion of Layered Hidden Markov Models was written by Oliver et al. \cite{layered-HMM} and they were essentially representing an activity as a sequence of atomic actions, by making each state in the upper layer HMM to probabilistically correspond to one atomic action. \\
+
+\textbf{Syntactic approaches} model high level activities as a string of symbols, by assigning each atomic level action a corresponding symbol. Similar to the previous hierarchical approach, the atomic level activities need to be recognized first, in order to classify the high level human activity. This approach represents human activities as production rules generating a string of atomic actions, and in order to recognize them we need a series of parsing rules. Context free grammars and stochastic context free grammars are some examples of techniques used. \\
+One method using stochastic context free grammars was introduced by Ivanov and Bobick \cite{ivanov-bobick}, and it involved separating the framework into two layers: the lower layer that recognized atomic level actions using a Hidden Markov Model and the higher level using stochastic parsing techniques in order to recognize the high level activity provided. All activity possibilities were encoded into a series of production rules which would be used by the higher level of the algorithm to parse the string of atomic activities recognized by the probabilistic lower level. \\ 
+
+\textbf{Description-based approaches} techniques represent a high level human activity in terms of the temporal, spatial and logical relationships between the atomical activities that make up the high level activity provided. As a result, the recognition process consists of searching for the sub-events satisfying the relations specified in the action's representation. In order to specify the necessary temporal relationships between atomical activities, a time interval is required to be associated with the sub-event. Allen's temporal predicates \cite{allen-pred} have been widely used to formally describe this temporal relationships between activities (the seven basic predicates: \textit{before, meets, overlaps, during, starts, finishes and equals.}). The classification is again done using a context free grammar to represent the activities formally, the role of the context free grammar is to ensure that the high level activity representation fits its grammar. Generally, the recognition problem is performed by developing an approximation algorithm to solve the constraint satisfaction problem. \\
+One of the first algorithms proposed, adopted the concept of Allen's interval algebra constraint network, mentioned before, to describe the temporal structure of activities. Sub-events were specified as nodes of a graph and their temporal relationships were modeled as edges between them. The system recognized high-level activities by checking which sub-events have already occurred and which have not, after which they could employ the techniques described previously \cite{IA-network}. \\
+
+\section{Training data}
+In order to train the classifier to recognize the human actions of `walking', `running' and `hand-clapping', some training data is required. For this purpose, the KTH action database was chosen, due to the fact that it contains all the human actions the system is trained to recognize. Furthermore, each action is performed several times by 25 subjects in four different scenarios: outdoors, outdoors with scale variation, outdoors with different clothes colors and indoors. All sequences are recorded over homogeneous backgrounds with a static camera with 25 frames per second frame rate. Each video sample has 160x120 pixels spatial resolution and have a length of four seconds on average. \\
+Due to the large variety of people executing the actions under varied scenarios, we can be assured that the classifier will not be over fitted to a certain environment or action. In addition to this, all the videos from the KTH dataset will be used only as training data for our classifier. \\
+
+\clearpage
+
+% /////////////// SYSTEM METHOD CHAPTER //////////////////
+\chapter{System method}
+From the taxonomy described in the previous chapter, it is apparent that over the years, many methods have been suggested for resolving the problems of human activity recognition. Despite the numerous differences between the proposed techniques, they all share a common system method: movement detection in the given video, feature extraction algorithm from the detected movement area and a classification algorithm that matches the extracted feature set. \\
+The following chapter will  attempt to explore each of these components in detail, as well as give some insight into the chosen approaches and the reasoning behind them. We will start by discussing the main steps in the overall system design.\\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{process.png}
+    \caption{This figure shows the main steps of the system process.}
+    \label{fig:process}
+\end{figure}
+
+The figure above illustrates the design followed throughout the decision making phase and system implementation. \\
+During the testing phase, a video recorded using a web-camera is given as an input to the first part of the process, which is the motion tracking algorithm, that is going to detect the area in which the movement is being performed. The extracted areas are then passed to the feature extraction technique, which is going to process the given data and extract the most important features, in order to be represent the activity in a concise way. This feature representation of the action is then given to the classification model to be recognized and labeled as one of the preexisting classes, using the models created during the training phase of the system.\\
+
+Due to its design, each stage of the process presented before, can be developed independently from the other stages. Therefore, tests can be designed for each processing stage to review the correctness and functionality just implemented. Furthermore, due to the iterative nature of this design methodology, developing new stages will not affect the functionality of the previously developed process parts. Another great advantage of this design method is that there are no interconnected parts, as a result, once a stage of development has finished and it was thoroughly tested, work can begin on the next stage without fear of having to alter previous stages. \\
+
+\section{Feature Extraction Methods}
+Following the structure of the taxonomy presented in the previous chapter, in this section we will present a series of single layered action representation methods and discuss the advantages and limitations they introduce. We will not focus on the hierarchical techniques discussed previously since they introduce an unnecessary complexity to the system and the type of actions to be recognized.  \\
+Due to the fact that each method we will present, has an entirely different method of representing the features extracted, it is essential that we first decide on the method of representing features and then choose an appropriate machine learning method. The technique chosen for the implementation of the system is the Slow Feature Analysis approach, for reasons that will be explained in detail in the following section. \\ 
+
+\subsection{Space-Time Shapes}
+This technique was investigated by reading the Actions as Space Time Shapes paper \cite{s-t-shapes}, which is based on the observation that the human action in a video generates a space time shape volume. These shapes contain both spatial information about the action, such as location and orientation of the torso and limbs, aspect ratio of the different body parts, as well as dynamic information, like the global body motion and motion of the limbs relative to the body. \\
+The proposed method extracts various shape properties of the action, using the solution to the Poisson equation. The extracted shape properties are then used for shape representation and classification. Due to the fact that the spatial and temporal domains are different in nature, new shape entities were defined for the purpose of describing the constructed space-time volume of the action, some of these shape entities are: `stick', `plate' and `ball'. Each newly defined entity has different informative properties that are used when characterizing the space time points of the volume. In addition to this, for every point of the volume, the space-time saliency is determined, in order to detect fast moving parts of the action. \\
+The first step the system has to take is to extract the space-time shapes from the video, this was done by subtracting the median background from each sequence and by using a simple thresholding in color space. The next step is represented by the extraction of space-time shape features, using the solution to the Poisson equation. \\
+
+\textbf{Space-time saliency} features are extracted from the volume representation of the action to retain the information of fast moving body parts. In a space-time shape the highest values to the Poisson equation:\(\Delta U(x,y,t) = -1 \), with \((x,y,t) \in S\), where the Laplacian \(U\) is defined as: \(\Delta U = U_xx + U_yy + U_tt\) are obtained within the human torso. Using an appropriate threshold, we can identify the central part of the human body, while the remaining areas include both the moving parts and portions of the torso that are near the boundaries. The derived formula for extracting the saliency of the central part of the shape is:\(\Phi = U + \frac{3}{2} \| \Delta U \|^2 \) where \(\Delta U = (U_x, U_y, U_t) \) and the formula emphasizing moving parts is: 
+
+\begin{equation}
+\hat{\Phi}(x,y,t) = 1 - \frac{\log(1+ \Phi(x,y,t))}{\max_{(x,y,t) \in S}(\log(1+ \Phi(x,y,t)))} 
+\end{equation}
+
+These formulas are applied to each point in the shape in order to compute their saliency value. \\
+
+\textbf{Space-time orientation} features, describe the orientation of the each space-time point of the shape as vertical, horizontal or temporal pate or stick. To extract the information, the Poisson equation is again used to estimate the local orientation and aspect ratio of different space time parts. To do this, the technique constructs the Hessian matrix of the shape:
+
+\begin{equation}
+H(x,y,t) = - \frac{1}{a+b+c}\begin{pmatrix} a & d/2 & f/2 \\ d/2 & b & e/2 \\ f/2 & e/2 & c \end{pmatrix}
+\end{equation}
+
+where \(a, b, c, d, e, f\) are parameters of a space time shape given by a conic function of the form: 
+\begin{equation}
+P(x,y,t) = ax^2 + by^2 + ct^2 + dxy + eyt + fxt + g \leq 0;
+\end{equation}
+
+The matrix approximates locally the second order shape moments at any given point, its eigenvectors corresponding to the local principal directions, and are inversely proportional to the length of the local curvature. As a result if we consider \( \lambda_1  \geq \lambda_2 \geq \lambda_3 \) be the eigenvectors of H, then the first eigenvector corresponds to the shortest direction of the local space-time shape, and the third eigenvector corresponds to the most elongated direction. Each point in the shape is then characterized by two types of local features, the first related to the local shape structure and the second relying on the most informative orientation. These features are determined by comparing the ratios of the eigenvalues and eigenvectors computed at every space point. \\
+
+The feature vectors are computed by combining the two space-time features extracted from the action volume into a global feature representation by using the following function:
+
+\begin{equation}
+m_{pqr} = \int\limits_{-\infty}^\infty \int\limits_{-\infty}^\infty \int\limits_{-\infty}^\infty w(x,y,t) g(x,y,t) x^p y^q t^r dxdydt
+\end{equation}
+where  \(w(x,y,t)\) is a weighting function, \(g(x,y,t)\) denotes the characteristic function of the space-time shape. 
+
+\textbf{Results and Experimentation}
+The system was tested on 81 low resolution (180 x 144, 25 fps) video sequences showing nine natural actions, each performed by nine different people. Some of the actions considered are: `running', `walking', `jumping', `waving'. The worst error rate obtained by the classifier is of 6.38\% . \\
+Some advantages of this technique are that it does not require video alignment, it is linear in the number of space-time points in the shape and it is a very fast approach, the overall computation time taking less than 30 seconds. Furthermore, it has the potential of coping with low quality video data and can be improved, for better results, by also taking into consideration intensity based features. \\
+
+\subsection{Space-Time Trajectories}
+Space-time tracking of an activity in a video is a common feature extraction technique in activity recognition. There are various ways the movement in a video can be tracked, by following only a single point on the object, tracking multiple points on the object or by following a bounding box enclosing the complete object. Depending on the complexity of the task and degree of information needed by the approach, any of the proposed tracking methods are viable. Though, it is important to note that a single point tracking generates only a motion trajectory and therefore holds no motion, shape or relative spatial information, while the other two suggested techniques capture some of the mentioned information, with the mention that, they only approximate the shape of an object, since no bounding box would perfectly fit an irregular object. A complete shape information can be captured, only by tracking the contour of the action. \\
+The approach followed in the referenced paper Actions as Objects: A Novel Action Representation \cite{actions-as-objects} exploits both shape and motion features. The information is captured by following the subsequent method: each time motion is detected in a frame, the points on the outer boundary of the object are projected as 2-dimensional contour in the image plane. All the extracted contours are then merged together, following the temporal order of extraction, into a spatiotemporal volume (STV) in \((x,y,t)\), thus becoming a 3-dimensional object in the \((x,y,t)\) space. This constructed volume is then analyzed using the differential geometric surface properties, such as peaks, pits, valleys and ridges, which are important descriptors since they capture both temporal and spatial information. \\
+
+\textbf{Generating the Action Volume}
+Given a set of tracked object contours, in order to create an STV, the system needs to establish the correspondence between the points in consecutive contours. Matching of two point sets is still a very difficult problem that has many proposed imperfect solutions. The method followed in this research paper is to use a graph theoretic approach. \\
+Let \(L\) and \(R\) be two point sets corresponding to two consecutive contours at time \(t and t+1\). The approach tries to maximize \(\sum_i \sum_j w_{i,j}\) which gives the solution to the maximum matching of the weighted bipartite graph, or in other words solves the point correspondence problem. 
+
+\begin{equation}
+w_{i,j} = \exp(- \frac{d_{i,j}^2}{\sigma_d^2}) \exp(- \frac{\alpha_{i,j}^2}{\sigma_\alpha^2}) \exp(-\frac{\xi_{i,j}^2}{\sigma_\xi^2})
+\label{eq:action-volume}
+\end{equation}
+where \( \sigma_d, \sigma_\alpha and \sigma_\xi \) control the distance between the vertices, the alignment and the degree of shape variation respectively. While \(d_{i,j}, \alpha_{i,j} and \xi_{i,j} \) represent the proximity, alignment similarity and shape similarity in the spatial domain that define the weights of edges from vertices in \(L\) to vertices in \(R\).
+
+The formula \ref{eq:action-volume} will provide a 1 to 1 match, however this does not guarantee to maintain the spatial relationships between contours. For consistent matching, an additional step is performed, which iteratively removes outliers and reassigns correct matchings based on the confidence of the correspondences in the first step.\\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{object-contours.png}
+    \caption{This figure shows a (a) sequence of action contours and (b) the shape generated by applying the proposed approach.}
+    \label{fig:object-contours}
+\end{figure}
+
+\textbf{Compute Action Descriptors}
+Once the spatiotemporal volume is created, the system needs to extract important action descriptors that correspond to changes in direction, speed and shape of the contours. These descriptors can be extracted from the shape of the STV by using differential geometry. The fundamental surface types are shown in the following table:\\ 
+
+\begin{table}
+    \centering
+    \includegraphics[width=0.8\textwidth]{surface-types.png}
+    \caption{The surface types and their relations to mean H and Gaussian curvatures.}
+    \label{fig:surface-types}
+\end{table}
+
+As shown in the Table \ref{fig:surface-types} the fundamental surface types are defined by the Gaussian curvature K and the mean curvature H, which were computed from the first and second fundamental forms of the underlying differential geometry. \\
+ 
+\textbf{Analysis of Action Descriptors}
+In order to determine the relationship between the action descriptors and the object motion, the system needs to define the shape of the contour. Based on the assigned shape, the contour can generate only a particular set of action descriptors and motion information. 
+The next step of the approach is to match actions to the appropriate activity class. Once the STV representation is created and the appropriate action descriptors have been extracted, the problem remains to only match a set of points in one view of an object, with a set of points in another view. The method presented in the paper is to estimate the relation between two STVs by using:
+
+\begin{equation}
+x \mathcal{F} x' = 0.
+\end{equation}
+where \(x\) and \(x'\) are points on left and right action sketches respectively and \( \mathcal{F}\) is the \(3 \times 3\) fundamental matrix defining this relation.
+
+\textbf{Results and Experimentation}
+To test the performance of the proposed technique, the system was tested on 28 sequences of 12 different actions, captured from different viewing angles. Some of the actions recognized are: `dancing', `walking', `running', `falling', `kicking'. This method has obtained good results, being able to correctly classify the chosen activities under a large range of environmental conditions. \\
+One great advantage of this approach is that it is view invariant, as  a result an action captured from two different viewpoints will have the same representation for both video captures. Furthermore, the STV representation is continuous, therefore, it does not require any time warping to match two sequences of different lengths.\\
+
+\subsection{Slow Feature Analysis}
+Is a biologically inspired technique, that uses the sparseness principle, according to which an activity is represented by a small number of descriptors, sampled from a large data set; as well as following the temporal slowness principle by modeling the transformation invariance in an image sequence. The purpose of this approach is to learn the invariant and slowly varying features from input signals, which follows the biological model of self-organized receptive field of cortical neuron from synthetic image sequences. Slow feature analysis is applied to human action recognition in order to discover mapping functions between an input image sequence that varies quickly and the corresponding high-level semantic concepts that vary slowly. The research paper followed in order to determine the steps required for the implementation of this approach is Slow Feature Analysis For Human Action Recognition \cite{main}. \\
+
+The first step in the implementation of this technique is to extract the area in which the movement is being performed, from the background. Once the motion areas are extracted, an edge detection algorithm is applied, in order to locate the motion boundaries. For this part, the Sobel operator is suggested, since it guarantees to find edges that have a higher gradient magnitude than the predefined threshold value.  Now that the most informative regions of the motion have been detected, the system starts to extract cuboids, by randomly sampling in the located regions.\\
+
+A cuboid represents a sequence of areas extracted from the same region in a predefined number of consecutive frames. For example, if the system is extracting a cuboid initialized at time t and centered at the selected position \((x,y)\), the cuboid will have the size of \(h \times w \times d\); in the referenced paper, the suggested sizes were of \(16 \times 16 \times 7\).  Due to the fact that noise data could be introduced in the informative region, by the selected threshold value of the edge detection algorithm, the system needs to balance out the introduced noise by sampling over a large number of cuboids. \\
+The next step of the algorithm is to reformat the extracted cuboids, in order to model some temporal relationships between the extracted areas. This is done by creating a vector representation of the areas extracted.\\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{cuboid-ex.png}
+    \caption{This figure shows the extraction process of a cuboid.} 
+    \label{fig:cuboid-ex}
+\end{figure}
+
+The nonlinear expansion applied to a cuboid creates the input vector for the Slow Function Analysis method. The output vector will have the size \(\Delta t\) and \(d-2\), where \(\Delta t\) is a predefined value, set to 3 in the paper, and d represents the depth of the original cuboid.\\
+Due to the fact that the nonlinear expansion will greatly increase the size of the cuboids, it has been observed that reformatting only the most informative cuboids, and discarding the rest, gives the same results at a great computational speed improvement. As a result, in order to find the most informative cuboids, we can apply the Principal Component Analysis (PCA) on the video frames and use only the 50 most varying frames, to extract cuboids from. Therefore, the reformatted cuboids represent the data from which slow functions are learned, as explained hereafter. \\
+
+\textbf{Slow Function Learning}
+For an I-dimensional input signal \\ \(x(t) = [x_1(t), ..., x_I(t)]^T \), this part of the method will extract some input-output functions \(g(x) = [g_1(x), ..., g_J(x)]^T \) so that the J-dimensional output signal \(y(t) = [y_1(t), ..., y_J(t)]^T \) with \(y_j(t) = g_j(x(t)) \) varies as slowly as possible, being subject to the following conditions:
+
+\begin{equation}
+\begin{multlined}
+\bigtriangleup_j = \bigtriangleup(y_j) = <\dot{y}_j^2>_t \text{ is minimal}, \\
+\text{subject to} \\
+<y_j>_t = 0 \text{ zero mean}; \\
+<y_j^2>_t = 1 \text{ unit variance}; \\
+\text{and  } \forall j' < j : <y_{j'}y_j>_t = 0 \text{ decorrelation}, \\
+\end{multlined}
+\end{equation}
+where \(\dot{y}\) denotes the operator of computing the first order derivative of\( y\) and \(<y>_t\) is the mean of signal \(y\) over time. 
+
+In order to compute the input-output functions, we need to apply a nonlinear expansion function \(h(x)\) to the input signal, to expand the original signal and centralize \(h(x)\): \(z := h(x) - h_0 \), where \(h_0 = <h(x)>_t \). Next we compute the input-output functions by solving the generalized eigenvalue problem for: 
+\(AW = BW\Lambda\), where \begin{equation} A := <\dot{z} \dot{z}^T>_t and  B := <zz^T>_t \end{equation} 
+This is done by finding the slowest varying eigenvectors, associated with the smallest eigenvalues, for the following formula: \(g_j(x) = w_j^T(h(x) - h_0\), where \(w\) represents the vector of the first K eigenvectors associated with the smallest eigenvalues. Therefore, the smallest eigenvalues can be found by applying a PCA for the given formula, and extracting the slowest varying vectors as the input-output functions for the given vector. \\
+
+\textbf{Accumulated Squared Derivative}
+ By using the learned slow feature functions, each input sequence, represented by the expanded vector representation of the extracted cuboids, is transformed to a new vector sequence with the size \(K(d- \Delta t +1 \), where K is the number of learned slow feature functions. SFA minimizes the average squared derivative, so the fitting degree of a cuboid to a certain slow feature function can be measured by the squared derivative of the transformed cuboid. If the computed value is small the cuboid fits the slow feature function, otherwise it does not fit the computed function. The formula for computing the squared derivative for cuboid \(C_i\) and slow feature \(F_j\) is:
+ 
+ \begin{equation}
+ \begin{multlined}
+ v_{i,j} = \frac{1}{d-\Delta t} \sum_{t = 1}^{d-\Delta t}[C_i(t+1) \otimes F_j - C_i(t) \otimes F_j]^2,\\ 
+ \text{ where } \otimes \text{ is the transformation operation. } 
+ \end{multlined}
+ \end{equation}
+ 
+In order to create a vector representation of the action, out of all the extracted cuboids, we accumulate the squared derivatives over all cuboids to form the ASD feature:
+
+\begin{equation}
+\mathnormal{f}_{ASD} = \sum_i^N V_i,
+\end{equation}
+where N is the total number of cuboids extracted from the current frame and \(V_i = <v_{i,1}, v_{i,2}, ..., v_{i,K}>^T.\)
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{ASD-feature.png}
+    \caption{An example of the computation of the ASD feature vector.} 
+    \label{fig:ASD-feature}
+\end{figure}
+
+\textbf{Results and Experimentation}
+The system was evaluated on four action databases: the KTH dataset, the Weizmann human action dataset, the CASIA action dataset and the UT interaction dataset. The accuracy obtained on the KTH dataset, for the supervised implementation of the SFA method, obtained by the system is 88.83\%. This accuracy greatly improves with implementations such as Discriminative SFA or Spatial Discriminative SFA, going up to 91.17\% and 93.50\% respectively. 
+One great advantage offered by this technique is that it uses holistic features, that utilize some global properties of moving objects, such as: body shape, silhouette, trajectories and reference joints. All these properties are carefully extracted and modeled by using cuboids and slow feature functions, as presented in greater detail in the above description. 
+
+\subsection{Decision Making}
+Deciding on the feature extraction and representation method is the most important part of the implementation process. Due to the fact that, the selected approach not only sets the feature domain, but also determines the classification model that best fits the chosen technique.\\
+There are many advantages and disadvantages to each individual method presented. The selected technique has to detect motion in the provided frame sequence, extract features to represent the action being performed in the video, in a concise way, and work well with a sufficiently complex classification model. The problem now is to determine which of the presented methods would work best for the implementation of an activity recognition system.\\
+Due to the fact that all the presented techniques are part of the same category of space-time approaches, the task of choosing the best suited method changes to that of determining which approach would give the best results, while maintaining a good degree of complexity for the implementation stage. After examining the proposed techniques, the conclusion that arose is that the Slow Feature Analysis presents the best results out of the three methods, as well as being thoroughly tested on a multitude of action databases, one of which being the one used by this project. Furthermore, the approach is  explained in great detail, as compared to the other two techniques which give scarcer details; not to mention, that should the need arise there are a great deal of reference papers that could help with the understanding of the methods used throughout the process.\\
+To sum up, the Slow Feature Analysis has proven to be the most suitable technique presented, for the development of the system, as it uses a more complex set of features, that give a higher degree of certainty to the classification system, as well as working well with a varied range of classification methods. \\  
+
+\section{Machine Learning Models}
+They represent one of the most important components of an action recognition system, due to the fact that they shape the structure of the feature set, as well as the complexity of the actions to be recognized. The machine learning method chosen for the system implementation is a multi-class support vector machine. The reasons supporting this choice are presented in the following sections, together with a few other machine learning techniques and the limitations they would impose on the system implementation. \\
+
+\subsection{K Nearest Neighbor Classifier}
+K Nearest Neighbor Classifier is a type of instance-based learning where the function is only approximated based on its neighbors and the computation is deferred until classification. A data point is classified by a majority vote done by its neighbors, the data point receiving the label of the most common class among its k neighbors. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{knn.png}
+    \caption{An example of the recognition process of a KNN classifier.} 
+    \label{fig:knn}
+\end{figure}
+
+One great disadvantage of this technique is that the parameter selection is an extremely important part of the algorithm that can only be done through testing, not to mention that the value given to k, the number of neighbors the point is compared to, greatly influences the effect of the noise on the classification. The less noise we have in the system, the less distinct the boundaries between classes are. Furthermore, this classification algorithm is exceedingly sensitive to noisy data, the accuracy of the algorithm being severely degraded by such data. \\
+Some advantages of this technique are that, it is extremely easy to implement and it works quite well for linearly separable data, with the mention that the optimal parameters have been selected using heuristics. In addition to this, the k nearest neighbor classifier is compatible with the feature extraction approach chosen in the previous sections, though, again we have to take into account the fact that the features extracted have to be very stable so as not to be perceived as noisy data, not to mention, that the results might vary quite a lot due to the unstable nature of the classifier. \\
+As a result, after taking into consideration all the presented advantages and flaws of the proposed classifier, even though it is compatible with the Slow Feature Function approach and it is very easy to implement, the models obtained would be too unstable. Furthermore, there is a very high possibility that the extracted feature vectors are non-linearly separable, in which case this approach is not viable. In conclusion, this classification technique is not suitable for the proposed project. \\
+
+\subsection{Hidden Markov Model}
+As mentioned in the previous chapter, Hidden Markov Models (HMM) are highly used techniques in activity recognition systems, due to their inherent property of classifying a complex task by recognizing the probability of its parts. They are probabilistic models that can represent a complex action as a series of connected motions. Therefore, each action consists of a set of hidden states and some transitions connecting the states, each with their own probabilities. Before being able to recognize the individual motions we need to determine the sequences of motions that characterize each action, or in other words, determine the transition probabilities between states in the HMM. \\
+Hence, we can use the following formula to determine the probability of a given sequence of feature vectors \(X = (x_i, ..., x_I)\) given a model \(\lambda_t \):
+
+\begin{equation}
+p(X|\lambda_t) = \sum_{\forall s} \prod_{t=1}^T p(x_t|s_t, \lambda) P(s_t|s_{t-1},\lambda).
+\end{equation}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{hmm-hierarchical.png}
+    \caption{This figure shows an example of a hidden Markov model for the action of `stretching an arm'.}
+    \label{fig:hmm-hierarchical}
+\end{figure}
+ 
+Such systems are very robust and accurate, hence the great suitability for complex activity recognition tasks. One great disadvantage of this method is that it imposes the feature extraction process, due to the fact that it requires the recognition of individual motions before it can identify the activity. The aforementioned feature extraction techniques would need to be run over the video provided and extract each individual motion, in order to provide an accurate feature vector representation of the activity, process that is extremely difficult and overall redundant. As a result, it is a great limitation for an activity recognition system whose main purpose is recognizing simple activities such as `walking' or `running'. \\
+Now that a feature extraction method has been chosen, we have to evaluate each classification model based on its compatibility with the feature space of the approach. Therefore, the ASD feature vector representation is not compatible with an HMM, since it represents a complete action instead of creating a representation of each part, motion of the activity. Furthermore, the feature extraction method is relying on modeling the temporal relationships between each frame of the activity, aspect that is vastly limited by the dependency modeled by an HMM classifier, in which a state can only be dependent on the previous state. \\
+By taking into consideration, all the aforementioned advantages and limitations of an HMM classifier, it was decided that it would be inappropriate for this project to use such an approach for the development of the system.  \\
+
+\subsection{Support Vector Machine}
+A support vector machine is a discriminative model, that classifies activities based only on their feature vectors. Given a training set of\(N\) labeled pairs \((x_i,y_i), i = 1,...,N\), where \(x_i\) is and I-dimensional data point and \(y_i \in {-1, 1}\). We have a function \(\phi\) that represents a kernel to map the original input space into a higher dimensional feature set so that the data becomes linearly separable. \\
+The support vector machine is trained by solving the following maximization problem:
+
+\begin{equation}
+\begin{multlined}
+\min_{w,b,\xi} \frac{1}{2}w^Tw + C \sum_{i=1}^N \xi_i \\
+\text{ subject to } y_i(w^T \phi(x_i) + b) \geq 1- \phi_i, \phi_i \geq 0. 
+\end{multlined}
+\end{equation}
+
+The support vector machine will generate the graph of the given training set by plotting all the given points onto the I-dimensional graph, it will then try to find the separating hyperplane that generates the greatest margin, therefore, guarantees the best generalization.  \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{svm.png}
+    \caption{This figure demonstrating some of the key features of a trained support vector machine or a linearly separable, 2-dimensional data set.}
+    \label{svm}
+\end{figure}
+
+As with any technique there are some disadvantages that we must consider, as they have the potential to limit the system. One common disadvantage of the SVM is the lack of transparency for its results. Therefore, SVMs cannot represent the probabilities of all activity categories as a simple parametric function, since the feature space dimension may be very high. \\
+However, the advantages this technique provides are overwhelming compared to the flaws presented above. As compared to the K-nearest neighbor classifier presented before, the SVM offers a lot of flexibility in the shape, the features domain space, can take.  By introducing a kernel function, an SVM can map the original input space into some higher dimensional feature space so that the data becomes linearly separable. Since the kernel function works in the original space but simulates the higher dimensional space by using the dot product in the higher dimensional feature space, it saves a great amount of computational time and power. Another advantage is that an SVM can be quite robust, by choosing an appropriate generalization grade, even when the training data has some bias. Lastly, possibly the most important property of the SVM is that it can be adapted to manage multi-category classification, without having to decompose the problem into multiple binary classification tasks. \cite{SVM}\\
+
+Taking into consideration all the facts presented above, we can unquestioningly decide that the most suitable technique for the feature extraction approach chosen, Slow Feature Analysis, is the Support Vector Machine. As a result the classification model considered for the implementation of this system is a multi-class support vector machine, with SVM learning being discussed in greater details in later chapters. \\
+
+\subsection{Omissions}
+Due to the fact that this project has been mainly developed using research based information and examples, it is apparent that some of the system design phases were more extensive than others, due to this, the project lacks some of the more interactive parts of a program, such as an extensive graphical user interface. Being only a small part of an identification system, it is extremely unlikely that an activity recognizer would be built as a stand-alone system, as a result the construction of a GUI was considered to be mostly outside of the scope of this project. \\
+The interface provided was designed mostly for the purpose of demonstrating the proficiency of the system outside of any real world context, and especially to avoid making any assumptions as to the level of familiarity of the demonstrators to MATLAB's interpreter. Therefore, the user interface could represent one of the future improvements for this project's design. \\
+
+\clearpage
+
+% ////////////// IMPLEMENTATION CHAPTER /////////////////
+\chapter{System Implementation}
+Now that the main techniques used in the design of the system have been presented, we will proceed to discuss how the main parts of the system were implemented and what tools we used for that purpose. For each method, we will present how the underlying algorithms work and explain their corresponding formulae or mathematical foundation. Furthermore, we will explain the importance of each presented technique and the way it is integrated with the rest of the components, in order to achieve the system implemented.  \\
+For the development of this project, we used Matlab libraries, such as, the Image Acquisition Toolbox and the libSVM toolbox for support vector machine implementation. Even though Matlab provides many algorithms for computer vision based tasks, for the purpose of this project, it was decided that none of these techniques would be used, instead they were treated as part of the functionality of the system. As a result, the implementation will only use basic data structures and the previously mentioned libraries that provide support for writing and reading  image and video file types, from input devices ,such as webcams, or the local file system, as well as provide support vector machine implementations. \\
+The following diagram describes the processes followed during the training and testing phase of the system, and it represents the motivation behind the structure of the following chapter. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{process.png}
+    \caption{This figure shows the main steps of the system process.}
+    \label{fig:process}
+\end{figure}
+
+\section{Extracting motion areas Kalman filter}
+As it can be seen in Figure~\ref{fig:process} the first stage in both training the models and testing the system is to detect the motion areas from a given video. For this purpose we have used the Kalman Filter algorithm to detect the areas in which the action is being performed in each frame. There is a distinction between the training and testing phase for this stage of system implementation, and that is represented by the origin of the given video. \\
+During the training phase, the video in which we detect motion is provided by the KTH video database, and it describes one of the three recognizable human activities, `walking', `running', `hand-clapping'. While, during the testing phase, the video presenting a human activity is recorded by using a webcamera, and it is saved locally, so it can be used as a reference for later testing. Due to this, an assumption the system is compelled to make is that the person executing the human activity, for training purposes, respects the constrictions of the system. As a result, the training activities provided can only exemplify the three recognizable activities of the system, furthermore, a video cannot contain an example of more than one activity at one time, some experimental results are shown for these cases during the Testing and Evaluation chapter.  \\
+
+Now that we have properly defined the origin and content of the provided video material, the system needs to analyze each frame and recognize the areas in which the movement occurs. The chosen algorithm for this task is the Kalman Filter or linear quadratic estimation, due to the fact that it provides an efficient recursive approach, that allows for accurate estimations of past, present and future states of the activity, even when given an incomplete or imprecise data model. \cite{Kalman-1} \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{kalman.png}
+    \caption{General definition of the Kalman Filter.}
+    \label{fig:kalman}
+\end{figure}
+
+Given a sequence of frames, the Kalman filter algorithm applies a two step process to each frame:
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{kalman-process.png}
+    \caption{Kalman filter process states.}
+    \label{fig:kalman-process}
+\end{figure}
+
+\subsection{Prediction step}
+Estimates of the current state variables are produced, along with their uncertainties, at the beginning of this stage, for each frame. Once the observation has been made, and the motion area has been detected, the estimates of the current state variables are corrected using a weighted average, more weight being given to estimates that have a higher certainty, during the correction step. Due to the recursive nature of the algorithm, some additional information is required. To keep the processing time of each iteration to a minimum, it has been observed that the algorithm only requires the current input measurements, the previously calculated state variables and its uncertainty matrix. \\
+
+In the Figure \ref{fig:kalman-process}, describing the process formula of the Kalman Filter process, the \(\hat{x}_k^-\) parameter represents the prior estimate, therefore it is the estimate made before the measurement update correction, and it is calculated by multiplying the state transform matrix A with the corrected estimate of the previous frame k-1, added to the estimation of the process noise.  \\
+The next parameter computed during this stage is the prior error covariance \(P_k^-\), which represents the summation between the prior error covariance of the previous frame (iteration) and the system noise, estimated at the start of the system. \\
+
+\subsection{Correction step}
+After determining the location of the movement, in the current frame, the algorithm corrects the prediction made in the previous step, as well as updating the error covariance, which is necessary for making the estimation for the next frame. Another essential part of this stage is that the Kalman Gain is computed, since this parameter sets how much the actual correction depends on the observation measured, as opposed to the prediction made during the previous step. \\
+
+The parameters used to correct the estimation made are computed as follows:\\
+The first thing we need to compute is the observation of the movement, which determines the location and size of the motion area \(z_k\). We then use the error between the computed measurement and the estimation made, to correct the estimated position of the movement. For the correction process, need to determine the Kalman Gain \(K_k\) which determines the weight of the estimation made during the prediction step as compared to the actual observation computed in this step. The system also needs to correct the error covariance matrix based on the current parameters. \\
+
+Based on the mathematical foundation presented so far, the following pseudocode presents the structure of the recursive algorithm that implements a Kalman Filter, and presents in detail the technique used to determine the area of the movement in each iteration. \\
+
+%\begin{algorithmic}
+%\caption{Algorithm for detecting the movement in a given video, uses the Kalman Filter technique.}
+%\Function{KalmanFilter} {$videoFile$}
+%\Let {$framesData$}{$videoFile$} \Comment{read the frames data from the video file}
+
+%\EndFunction
+%\end{algorithmic}
+
+The decision to implement the Kalman Filter technique for this stage of the implementation was made after carefully comparing several algorithms, such as the Camshift algorithm, the Background subtraction method and the Kalman Filter. Due to the fact that this first stage of the project has a great influence over all the remaining steps, since it determines the area from which activity features are being extracted, a precise and reliable algorithm had to be chosen. The advantages of the Kalman filter algorithm that have determined the superior compatibility of this technique, with the activity analysis system are that it is computationally more efficient than measuring the observation directly from the entire past observed data, at each iteration. In addition to this, being a recursive technique, there is no need to store all the past observations, since the current predictions are made only using the previous step. Furthermore, the Kalman Filter is able to find the optimal estimation from streams of noisy or inconsistent data. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{kalman-results.png}
+    \caption{Results of Kalman filter motion detection algorithm for all the activities recognizable.}
+    \label{fig:kalman-results}
+\end{figure}
+
+As it can be observed in Figure~\ref{fig:kalman-results} , the results obtained for the provided video samples are consistent, and show a very small degree of variance when taking into consideration the noise level of the video environment, variation that can be most easily observed for the second image that depicts a person running.Due to the level of similarity between the background and the person's clothing color, the algorithm has some difficulty predicting the exact area of movement, this behavior can be rectified to a degree by increasing the threshold value used by the Kalman Filter algorithm, which was not done for the purpose of this simulation.\\
+
+\section{Select Most Informative Frames - PCA}
+Generally, a video sequence has between 100 and 300 frames and we seek to extract 100 cuboids from each frame, this leads to an extremely high amount of data to be considered at one time, as a result some method of speeding up the process needs to be employed. For this purpose we apply a Principal Component Analysis on the motion areas extracted by the Kalman filter, in order to determine the 50 most informative, varying frames of the video. \\
+For this task, we use a PCA due to the fact that it is able to find the eigenvalues of each frame and its associated eigenvector. After determining the principal components of the given data, the only remaining issue would be to sort the eigenvalues into descending order and extract the 50 eigenvectors associated with the first 50 eigenvalues, since they showed the most variance out of all the considered elements.\\
+In order to mathematically define the Principal Component Analysis, we have to state that it is an orthogonal linear transformation, that maps the given data to a new coordinate system such that by projecting the data on the chosen axes we can establish an order based on the variance displayed by the given observations. The data is provided as a matrix where each column represents a new observation, therefore, the transformation is defined by a set of p-dimensional vectors of weights:
+
+\begin{equation}
+\begin{multlined}
+w_{(k)} = (w_1, ..., w_p)_{(k)}, \\
+\text{ that map each row vector } \\ x_{(i)} \text{ of x to a new vector of principal component scores } \\
+t_{(i)} = (t_1, ..., t_p)_{(i)} \text{ given by } t_{k(i)} = x_{(i)} \cdot w_{(k)},
+\end{multlined}
+\end{equation}
+ in such a way that the individual variables of t  successively inherit the maximum possible variance from x, with each loading vector w constrained to be a unit vector.
+
+
+The aforementioned formulas were implemented using the Matlab function svd (singular value decomposition), which requires as input data a matrix representation of the features to be analyzed. Therefore, each extracted area corresponding to the original frames, was reformatted as a vector and added to the matrix as a column. \\
+
+%PCA pseudocode
+
+From this step onwards, all the remaining processing steps will be applied to the 50 frames selected. The optimal number of the frames to be selected was chosen after running the system with a series of values greater than 50, and observing very small differences between the obtained results, when it came to classification accuracy, but a great improvement in processing speed could be noticed. For any value smaller than the chosen one, the system showed too significant losses in accuracy, compared to the run time improvement.\\
+
+\section{Detecting contours - Sobel operator}
+Now that the motion areas have been extracted from each frame and the most informative frames have been selected, the next processing step, according to the Slow Feature Analysis technique, is to determine the motion boundaries. This can be done by applying an edge detection algorithm to the extracted areas. Since the activity has already been recognized from the background, as a result, the level of noise remaining has been reduced significantly, therefore the system can apply any edge detection algorithms, independent of their complexity level. \\
+The chosen technique for the detection of motion boundaries is the Sobel operator, which determines an approximation of the gradient of the image intensity function. The technique convolves the given input image with a \(3 \times 3\) matrix kernel in order to extract the horizontal and vertical gradient coefficients of each pixel. Due to the fact that it uses a fairly straightforward technique, the computation time is relatively inexpensive, while the results are somewhat crude approximations, which makes this technique quite unsuitable for obtaining precise results from images that display high frequency variations. \\
+
+The kernel used for the implementation of the Sobel operator is:
+
+\begin{equation}
+G_x = \begin{bmatrix} -1 & 0 & 1 \\ -2 & 0 & 2 \\ -1 & 0 & 1 \end{bmatrix} * A
+\text{ and }
+G_y =  \begin{bmatrix} 1 & 2 & 1 \\ 0 & 0 & 0 \\ -1 &-2 & -1 \end{bmatrix} * A
+\end{equation}
+where A represents the source image and * denotes the 2-dimensional convolution operation. At each point in the image, the resulting gradient approximations can be combined to give the gradient magnitude using:
+\begin{equation}
+G = \sqrt{G_x^2 + G_y^2}. 
+\end{equation}
+
+%INCLUDE PSEUDOCODE OF SOBEL OPERATOR.
+
+After carefully testing the Sobel operator, the following results were obtained. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{Sobel-results.png}
+    \caption{Results of Sobel operator edge detection algorithm for all the activities recognizable.}
+    \label{fig:Sobel-results}
+\end{figure}
+
+As we can see, the motion edges extracted from each area are sufficiently precise representations of the activities for the Slow Feature Analysis method, especially since the technique itself manages noisy areas and image data errors. \\
+
+\section{Extracting Cuboids}
+By identifying the motion boundaries in the informative regions extracted, we can start extracting cuboids from these regions. A cuboid is a structure that has the size of \(height \times width \times depth\), where height and width represent the area size extracted from the current frame, for this implementation they were both set at 16, and the depth, set at 7, represents the number of frames, starting from the current frame f and moving towards frame \(f + d\), from which the same area size is extracted, from the same position in the frame. \\
+We extract 100 cuboids from each frame, by randomly choosing a pixel position in the current frame and considering the selected pixel position as the center of the areas to be extracted. The area created will have the following coordinates: \\
+
+%INSERT AREA COORDINATES FIGURE (h-8,w-8; h-8, w+8; h+8, w-8; h+8, w+8)
+
+Before starting the extraction, we need to check that the area selected contains a detected edge. If it does, we then start to extract the area at the set coordinates, from d consecutive frames, starting with the current frame. If the selected area does not contain an edge, we randomly choose another pixel position, following the same strategy.\\
+The implementation was done by following the subsequent strategy:\\
+
+%INSERT CUBOID EXTRACTION PSEUDOCODE
+
+The process applied has rendered the following type of results:\\
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{cuboid-results.png}
+    \caption{Example of a cuboid of depth 5 extracted from a video in which the hand-clapping activity was being performed.}
+    \label{fig:cuboid-results}
+\end{figure}
+
+\section{Non-linear expansion}
+Given the extracted cuboids, each cuboid will be reformatted with the purpose of modeling some temporal relationships between the extracted areas of a cuboid.Therefore, each cuboid will be transformed into a vector of size \( height \times width \times \Delta t\) rows and  \(d - \Delta t - 1\) columns. \(\Delta t\) is set for this implementation to 3, based on the suggestions in \cite{main}. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{cuboid.png}
+    \caption{Figure illustrating the expansion process of an extracted cuboid.}
+    \label{fig:cuboid}
+\end{figure}
+
+As described in the previous section, a cuboid is stored in a matrix of size \(height \times width\) rows and depth columns, as a result, each column represents the area extracted from a frame. After the reformatting process, the output vector will have the aforementioned size. Each column of the output vector will contain \( \Delta t\) columns of the cuboid matrix, in other words \( \Delta t\) areas extracted from consecutive frames. Therefore, as seen in Figure~\ref{fig:cuboid} each vector column will have an overlap of \( \Delta t - 1\) areas. \\
+This process was implemented as follows:
+
+%INCLUDE PSEUDOCODE OF NONLINEAR EXPANSION 
+
+\section{Learn Slow Functions}
+For each non-linearly expanded cuboid, given as input to the Slow Function learning method, there is a series of steps we need to apply in order to process the data and extract the slow functions. The mathematical definition given in the previous chapters will be expanded in this section. \\
+In order to find the slowest varying elements of the input vector, we need to normalize the expanded cuboid \(\tilde{z}(t)\), by applying an affine transformation to generate \(z(t)\), that has zero mean and an identity covariance matrix I.
+
+\begin{equation}
+\begin{multlined}
+z(t) := S(\tilde{z}(t) - <\tilde{z}>). \\
+\text{ with } <z> = 0\\
+\text{ and } <zz^T> = I
+\end{multlined}
+\end{equation}
+
+The S matrix is the sphering matrix, that can be found by applying the Principal Component Analysis on matrix \((\tilde{z}(t) - <\tilde{z}>)\).\\
+Having normalized the input vector, we can extract the slow functions of the current cuboid, by applying PCA on the matrix \(<\dot{z}\dot{z}^T>\). We extract \(d - \Delta t - 1\) slow functions from each cuboid, by choosing the eigenvectors with the \( d - \Delta t - 1\) lowest eigenvalues. 
+
+\begin{equation}
+\begin{multlined}
+w_j: <\dot{z} \dot{z}^T>w_j = \lambda_j w_j\\
+\text{ with } \lambda_1 \leq \lambda_2 \leq ... \leq \lambda_j.
+\end{multlined}
+\end{equation}
+
+which provide the input-output function: 
+\begin{equation}
+\begin{multlined}
+g(x) := [g_1(x), ..., g_J(x)]^T\\
+\text{ with } g_j(x) := w_j^T h(x)\\
+\text{ where } h(x) := S(\tilde{h}(x) - <\tilde{z}>), \text{ which is a normalized function. }
+\end{multlined}
+\end{equation}
+
+Having presented the mathematical definition, the steps were implemented as follows:
+%PSEUDOCODE 
+
+\section{Added Squared Derivatives}
+As presented in a previous chapter, the feature representation constructed by this method is called an Added Squared Derivative, and is formed by concatenating the accumulated values of all slow feature functions extracted in previous steps, by applying the formula:
+
+\begin{equation}
+v_{i,j} = \frac{1}{d-\Delta t} \sum_{t = 1}^{d-\Delta t}[C_i(t+1) \otimes F_j - C_i(t) \otimes F_j]^2, 
+\end{equation}
+where \(\otimes\) is the transformation operation. 
+
+For each expanded cuboid we need to find the squared derivative over all the slow functions extracted from the respective expanded cuboid. We then accumulate the squared derivatives over all cuboids, in order to form the ASD vector. Due to the fact that there are 5 slow features extracted from each cuboid, the squared derivative of an expanded cuboid has a size of \(height \times width \times \Delta t\) rows and \(d - \Delta t - 1\) columns, which will be preserved by the summation of the squared derivatives over all cuboids.\\
+The implementation of the process described is explained by the following pseudocode:
+
+%PSEUDOCODE
+
+\section{Multi-class Support Vector Machine}
+After the computation of the ASD feature, we use a multiclass linear SVM for action classification. There exist several functions to facilitate the training and utilization of support vector machine, but the libSVM was deemed the most suitable to our project. This decision was greatly influenced by the fact that this library offers Matlab functions, but most of all by the fact that it enables the creation and training of multiclass SVM.\\ 
+The libSVM toolbox provides two essential functions: svmtrain() and svmpredict(). The first function svmtrain() takes as an input parameter a set of D-dimensional data points and their corresponding set of labels. It then attempts to find the separating hyperplane within the space of the chosen kernel function, by solving the minimization problem through the use of the sequential minimal optimization algorithm. Since we are using a multiclass model, libSVM uses in its implementation the one-against-one approach for its training algorithm, therefore each model is divided into a subset of binary classification problems. As a result, for k possible classification labels we reach a total of \(\frac{k(k-1)}{2}\) subproblems, in our case \(k = 3\), hence giving us 3 binary sub-problems.A sub model is trained by optimizing the following formulas, for classes n and m:
+
+\begin{equation}
+\begin{multlined}
+\min_{w^{nm},b^{nm},\xi^{nm}} \frac{1}{2} (w^{nm})^T w^{nm} + C \sum_t (\xi^{nm})_t \\
+\text{subject to } (w^{nm})^T phi(x_t) + b{nm} \geq 1 - \xi_t^{nm},\text{ if } x_t \text{ is in the nth class,}\\
+	      (w^{nm})^T phi(x_t) + b{nm} \leq -1 + \xi_t^{nm}, \text{ if } x_t \text{ is in the mth class,}\\
+	      \xi_t^{nm} \geq 0.
+\end{multlined}
+\end{equation}
+
+Moreover, libSVM offers support for linear or non-linear SVM with kernel functions such as  polynomial, radial basis or sigmoid. The user can configure which of the kernel functions should be used, an example of the non-linear function given is:
+
+\begin{equation}
+K(x_n,x_m) = \sum_n \phi_n (x_n) \phi_n (x_m),
+\end{equation}
+
+\(\phi(x)\) is some predefined function of x, that maps data points fro the original feature space to a high dimensional feature space, in which the data points become linearly separable, thus enabling the SVM classifier to solve extremely complicated and computationally intensive problems in an efficient manner. The default kernel function for the libSVM toolbox is the radial function, but for our data set, the linear kernel has shown the best results.
+
+\begin{equation}
+K(x_n,x_m) = u' * v;
+\end{equation}
+
+Since the data provided has proven to be linear, there are no optimizations left to be made for the applied kernel function.
+
+\subsection{Classifying ASD feature vectors}
+As mentioned in a previous chapter, we use a multiclass SVM in order to avoid any binary classifications, as a result, we have three classes that correspond to the recognizable activities: `walking', `running', `hand-clapping'. We use k-fold cross validation to ensure the generalization of the models created during training in relation to the data used, for this project the k-fold value was set to 10. \\
+Due to the fact that the computation process is quite time consuming, the training videos have been saved locally in mat format, and they can be simply read by the SVM classifier and used by the k-fold cross validation process. \\
+We use the models generated after the k-fold cross validation to classify the current ASD feature representation of the testing activity example. Each model is used by the SVM classifier to assign a label to the example, each classification label being used as a vote for the respective class. After the voting is done and each model has classified the activity, the label assigned to the testing example is the label of the class with the most accumulated votes. \\
+The task of classifying the testing sequence was undertaken by the svmpredict() function, that takes as input parameters a trained model, based on the training data, the label of the testing example, which in our case was set to a random value, and the vector representing the testing activity. 
+After several tests, it was apparent that the case of two classes obtaining the same number of votes is quite frequent, and due to the implemented technique, each time the first class would be chosen. In order to resolve this case, together with the votes, we have also accumulated the degree of certainty of the model, in the classification made. As a result, when we encounter the case of two classes having the same number of votes, we choose the class with the highest degree of certainty. \\
+%PSEUDOCODE
+
+\subsection{Demonstration interface}
+Now that the entire functionality of the system has been presented, all that remains is o construct a user interface that would enable the demonstration of the system's functionality. As previously mentioned, being a project heavily based on research, a relatively short period of time was allocated for the development of the user interface. Therefore, the GUI was developed using the Matlab's inbuilt graphical user interface development toolbox, GUIDE. The resulting interface can be observed in Figure~\ref{fig:interface} , complete with some explanatory commentary. \\
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{interface.png}
+    \caption{Figure illustrating the demonstration interface.}
+    \label{fig:interface}
+\end{figure}
+
+In terms of functionality, the interface provides a live display of the video being recorded by the web-camera, which starts once the program is run from the Matlab environment, it also display some comments meant to update the user to the progress of the system, through the feature extraction process. The project can also be run directly by using a prerecorded video in avi format, as well as directly by using a ASD feature vector representation of an activity performed, stored in mat format locally. The result of the classification is displayed in the output display area, for more information being required to view the console of the Matlab environment, where the user can view information like the number of votes achieved by each classification class, the accumulated certainty value of the trained models in the assigned label and many more. \\
+
+\clearpage
+
+%///////////// EXPERIMENTATION CHAPTER /////////////////
+\chapter{Experimentation}
+Having discussed and documented the process undertaken by the system, from detecting motion in a given video, to detecting the edges of the motion, to extracting cuboids from the motion boundaries, learning slow feature functions from the detected cuboids and to using the data extracted to represent the video sequence as a feature vector, we now need to present an experimental evaluation of the system. During the course of this chapter, we will discuss the effects of changing the dimensions of the training data has on the classification results, followed by an examination of the results achieved by using different kernel functions to train the classification models and finishing with a set of testing examples that are constructed so that they test different adaptability characteristics of the system.\\
+
+
+\section{Varying Training Data Quantities}
+To evaluate the accuracy of the implemented system, one action database i.e. the KTH action dataset was used. The KTH dataset contains six types of single persons actions, out of which the system can recognize `walking', `running', `hand-clapping'. The recorded activities are performed by 25 people in four different scenarios: outdoors, outdoors with scale variation, outdoors with different clothes and indoors with lighting variation. Each video is about 20 seconds long, on average for the training data, as for the testing videos we record using a web-camera, they are sampled at 25 fps with a total size of 300 frames, that was deemed a sufficient amount of time for gathering the necessary information. \\
+Due to the approach implemented, the great variation in the length of the video sequences does not influence the system implementation at all, due to the fact that we end up using only 50 of the provided frames, from which we extract cuboids of equal sizes, data structures that dictate the overall length and size of the ASD feature vector. As a result, we can continue our experiments without having to worry that an action with a greater video length would be unfairly compared to an action with fewer frames data. \\
+The amount of training data used when creating a machine learning model is extremely important as it can result in the model being overfitted, if too much data is used or unable to recognize the activities if too little data is used. Not to mention that the amount of data used has a direct impact on the computational time required to create the classification models and assign a label to the testing example. In our case, having implemented an SVM-based system, the number of support vectors is directly proportional to the number of training data examples used, as a result, the volume of training data dictates how much space is required to store the classification models, as well as the processing time required to compute the models. \\
+In order to observe the effect of the number of training data examples used for classifying the three human activities mentioned previously, we are going to test the system on five different sizes of training data, each containing the same number of example for each activity. The considered training set volumes are: 15 samples, 45 samples, 75 samples, 105 samples and 125 samples, each training set was carefully chosen so that it contains at least one example of each activity under all the considered conditions: outdoors, outdoors with scale variation, outdoors with different clothes and indoors with lighting variation. The results of this test can be observed in Figure ~\ref{fig: variable-data}, where we display the data sizes along with the accuracies obtained for classifying all three activities on the trained models. We find the accuracy by dividing the total number of incorrect classifications by the number of test samples to obtain the accuracy of the classifier.\\
+The following graph shows the performance of the system, as the volume of the training data utilized increases. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{variable-data.png}
+    \caption{Figure illustrating the variation in classification accuracy as the volume of the training data increases.}
+    \label{fig:variable-data}
+\end{figure}
+
+As expected, the classification accuracy shows a great rise for the first three sets, slowly stabilizing for the last two. Once the threshold of 75 training samples has been reached, the accuracy rises steadily, until it reaches the maximum level, obtained for 125 training examples, after which it hovers around the same value. One observation we can extract from the graph is that a training set of less than 60 examples is expected to be quite unstable, as every example added to the data set greatly influences the overall result. Furthermore, once the threshold of 60 video samples has been reached, not only is the accuracy rising more slowly, but also, the overall system shows a greater level of stability, due to the fact that each added example still improves the classification process, but its influence is dramatically reduced, having next to no influence once the level of 120 examples has been reached. This conduct could be attributed to the fact that each activity could be performed in a different way each time, even by the same person, as a result the great degree of variance in the manner the activities are performed is only compensated after a sufficient amount of examples have been provided. Though, the degree to which the environmental factors and the particularities of the activity have not been studies sufficiently, thus more experiments would be required to support the affirmation made. \\
+
+\section{Altering the Kernel Function}
+The next experiment performed is going to explore the effects of altering the kernel function used to map the feature vectors into a higher dimensional space, where they can be linearly separated, during training and testing. This investigation is going to produce a comparison of the four kernel functions provided by the libSVM toolbox, which are: linear, polynomial, radial-basis and sigmoid. In order to evaluate the performance of the four kernel functions, we are going to train the classification models for each of the four kernel functions mentioned previously, by following the approach described in a previous chapter. We then classify each of the activities with the models created and record the obtained accuracies in Figure ~\ref{fig: kernel-test}.\\
+
+In order to obtain a better evaluation of the four kernel functions, we are going to follow the same strategy used for the previous experiment, in order to describe the evolution of the trained models, rather than just a value. Therefore, the kernel functions are used to train classification models, as explained in a previous chapter, with the mention that the training sets used will have the following sizes: 75, 105, 125. The trained models are then used to recognize the same examples that were utilized in the previous experiment. The following figure records our findings:
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{kernel-test.png}
+    \caption{Figure illustrating the accuracies given by the four kernel function types, as the volume of the training data decreases.}
+    \label{fig:kernel-test}
+\end{figure}
+
+As it can be observed from Figure\ref{fig:kernel-test}, the linear function gives the greatest percentage of accurate predictions for all the considered training data volumes. We have to consider that none of the other kernel functions were optimized for our training data, all parameters being set to their defaults. Nonetheless, this test is sufficient for motivating our decision of using this kernel function for the implementation of the system. \\
+The radial function ranks second, showing a great improvement, the more training examples it receives for creating the models. Taking into consideration the fact that it starts at a much lower accuracy, than the one given by the linear function, it show a tremendous improvement, one explanation for this behavior could be that the linear characteristics the training data shows for a small volume become quite irrelevant the more data is added. This is only an assumption, though, which would require further investigation. \\
+Starting quite closely, but not showing such a great rate of improvement is the polynomial function. This behavior, could suggest that the more training examples are given, the clearer the classes become, though this difference is too small to be noticeable over a small variation of data set sizes. Lastly we have the sigmoid function, which gave the poorest results out of all, with the greatest accuracy of 52.94\%. However, as the sigmoid function has numerous properties that have not been researched \cite{gamma}, it is difficult to make any speculations as to the behavior of the function, and its accuracy.\\
+
+\section{Combine Actions}
+The goal of this final experiment is to test the ability of the system to recognize one of the three activities, that was recorded in highly noisy environments, such as: lighting parameters that change over the course of the recording, background color that blends in with the clothes of the person performing the activity and performing two of the recognizable activities during the same recording. For this purpose, several testing videos have been recorded for each type of activity being performed under each of the described environments. \\
+In order to test the effects of this experiment, we extract features from each of the recorded video and using a set of SVM models, we classify each action recorded and compare the accuracy obtained for activities that were recorded in an controlled environment, such as: having a constant light intensity value over the course of the action, the background color shows a high contrast with the clothes of the person performing the action and performing only one activity, out of the three recognizable, very similarly with the training set examples. The results of this experiment were recorded in Figure ~\ref{fig:actions-observations}.\\
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{actions-observations.png}
+    \caption{Figure illustrating the accuracies given after testing on videos that show light and clothing variation.}
+    \label{fig:actions-observations}
+\end{figure}
+One observation we can make based on the results obtained for the two experiments is that both factors have a great effect on the overall classification accuracy, but the most impactful over all the activities, is the light variation value of the environment. As we can observe, the classification accuracy for `walking' and `running' has been drastically affected by the light changes occurring in the environment, impact that cannot be seen for the `handclapping' activity, to the same degree. One reason for the great difference between the decrease obtained for the `walking' and `running' activities on the one side and the `handclapping' activity on the other, is that for the first group, the motion needs to be very clear, in order to distinguish between the two, since they are extremely similar and involve the same motions executed at different speeds. While for `handclapping', we have a much greater difference when compared to the other activities. As a result, the extracted features must contain a large degree of noise, thus influencing the labels assigned after classification, by confusing two very similar activities a lot more than usual, but still being able to identify a greatly different activity, such as `handclapping'.\\
+From the second variation test, we observe that activities that display a large degree of movement are easier to recognize than an activity that is mostly stationary, even if there is a great difference between the two groups. Again, the `walking' and `running' activities are obtaining very similar accuracies, this time much closer to the classification accuracy of the system. One reason for this would be that motion is easier to identify, even in an environment in which the person blends with the background, as a result since `walking' and `running' are activities that are heavily based on motion, they are easier to detect than `handclapping' which is a mostly stationary activity. Thus it is harder for the motion detection and edge extraction algorithms to detect the contour of the person, as a result, they introduce a large degree of noise in the system. \\
+
+As for the third experiment performed, for which we tested the ability of the classifier to recognize an activity, from a video in which two actions were being performed, we can investigate the results by studying the table included below.\\
+
+\begin{tabular}{l*{6}{c}r}
+Actual Label              & Walking & Handclapping & Running \\
+\hline
+Walking - Handclapping & 7 & 3 & 0  \\
+Running - Handclapping            & 0 & 4 & 6 \\
+Walking - Running           & 8 & 0 & 2 \\
+\end{tabular}\\
+
+For this experiment we recorded several videos for each combination of the recognizable activities: `walking-handclapping', `running-handclapping' and `walking-running'. Each set of recorded videos was set up in such a way that in half of the videos, one activity would be longer than the other one and in the other half we would have an equal time distribution for both activities. As the results demonstrate, in the first case, the activity that was performed for a longer period of time would always be recognized, while for the case of equal time distribution, `running' and `walking' seem to be favored over `handclapping', while in the case of `running-walking' videos, the activity that is most similar to the training data is recognized each time. As a result if `running' parts of the video do not have the required speed of body form, they will be recognized as walking, since the two activities are so similar. The results obtained are in accordance to the methodology used to implement the system, due to the fact that the classification is done by counting the number of votes committed to each class, there is no output regarding the degree of certainty the classifier has in the label assigned, as compared to the other possible classes. We could easily display the amount of activity elements that were recognized as each of the three possible classes, by displaying the number of votes each class received, from the trained models. After observing the results of this experiment, it was decided that testing on videos in which all three activities have been executed would render the same results, thus reducing the interest for such a test. \\
+
+\section{Conclusions}
+From this series of experiments we have been able to deduct a number of conclusions. The most important is the understanding that the training dataset is linearly separable, as supported by our comparison of the four kernel functions: linear, radial, polynomial and sigmoid. Form that experiment we could safely conclude that the expansion techniques employed during the feature extraction stage of the process, were successful, thus allowing us to use a more basic and computationally inexpensive technique during the classification of the activity. \\
+In addition to this, the experiment regarding the effect of the training dataset volume on the overall accuracy of the system, revealed the minimum number of training examples required, in order to achieve a sufficient classification certainty. The amount of influence the training examples have, the smaller the dataset is, could be a result of the limitations imposed by the system, during implementation. For example, working with only 50 frames, and extracting only 100 cuboids from each frame, could show a deficiency in the amount of information required in order to classify the activities with an adequate amount of certainty, that is compensated once a sufficient amount of training examples has been provided. \\
+From the third experiment, we could observe that the variation of light in the environment has a greater impact over the classification of `running' and `walking', while the clothing variation mostly influences the accuracy obtained for classifying the action of `handclapping'. Both tests have shown a great impact over the activities recognized, the clothing variation decreasing the accuracy with almost 12 percents, on average, while the light variation shows a decrease of  almost 14 percent, on average. The second stage of our experiment, had the purpose of testing the recognition results for classifying videos in which two of the activities had been performed. Our test has shown that the most difficult task was to recognize between `walking' and `running', since they are very similar activities. The results have remained constant for the task or recognizing between `handclapping' and `walking' or `running'. The end result of this experiment is that, the classifier is going to assign to the activity, the label of the longest action being performed in the video. \\
+
+\clearpage
+
+% /////////// TESTING AND EVALUATION CHAPTER ///////////
+\chapter{Testing and Evaluation}
+In this chapter we are going to discuss the strengths and weakness  of the finished system, as well as present some methods of testing the correctness of the implemented approach. The techniques discussed further, are going to present the methods used to grantee that the results obtained for each main part of the system are correct, together with some results of these methods.\\
+
+\section{Function Correctness}
+Due to the iterative design methodology employed for the development of this automatic human activity classifier, each stage of the process is independent of the other stages. As a result, each function developed could be tested without having to worry that errors from previous development stages would carry on to the current function, thus corrupting the results obtained. Therefore, by taking advantage of these characteristics of the design method used, and the fact that Matlab is an interpreted language, each function was tested by first making sure that each line was doing what was expected, hence the testing style adopted would be best described as white-box unit testing, each function being tested line by line as it was written. \\
+Again taking advantage of the fact that there are almost no interconnected parts of the system, once each function was considered finished, a series of tests were developed to ensure that the output given was as expected. In order to have some measure of control over the output results, the input parameters were created individually as much as possible, or carefully checked when received from other functions, thus adhering to the unit testing aspect of the chosen testing approach. \\
+Any test cases created, consisted of real data as was expected to be used by the real system, thus, no borderline cases were used, since the definition of such a case was very difficult to imagine. Nevertheless, functions were tested extensively, the overall result being that they returned the outputs we expected, this proving their correctness. \\
+
+\section{Model Correctness}
+One of the essential aspects of working with machine learning techniques is to ensure that the models obtained have been trained correctly. Due to the fact that many techniques used in training models do not always converge upon the same exact values, one example being functions that find local maxima and minima, in order to estimate the correctness of the trained models, we require a technique that does not rely on obtaining the same results for each of the models classified on the given training data. One such technique is k-fold cross validation. \\
+k-fold cross validation is the process of splitting the training data into k partitions, out of which one is kept for training the model, and the rest k-1 are used for testing the computed model. To reduce the variability of the results, we perform multiple rounds of cross validation, which imply that the data is reshuffled and new partitions are created, after which the process is repeated again. The obtained results are then averaged over the rounds to give a more reliable estimate of the system's performance. After performing this process, the obtained data supports the correctness of the system and ensures us that nothing unexpected is taking place during the training phase of the classification. \\
+
+\section{System Performance}
+From the presented test results, in the previous chapter, we can state that the system has performed well, achieving an accuracy of 82.35\%, after being trained on a total of 152 videos of the three actions being performed under different environments. This result is comparable to the ones obtained in the research paper, on which the system implementation is based \cite{main}. In the original paper, the result obtained after testing the supervised implementation of the technique on the KTH dataset, was 88.83\%. One mention has to be made, before we discuss the results further, that for this project, we have not used the entire KTH dataset for the training of the system, due to the enormous amount of time required for a video sample to be processed. Additionally, the accuracy obtained in the referenced paper, is obtained after recognizing all the six activities documented by the KTH video database.\\
+However, one great flaw of the system is its extended computation time, required for a video to be recorded, analyzed and classified. The main reason for this flaw is the fact that the system analyzes enormous amounts of data, starting from a recorded video sequence of 300 frames, moving on to extracting 100 cuboids out of the most informative 50 frames, to learning 5 slow functions out of each cuboid extracted from each frame. We have to take into consideration the fact that all the included data values (100 cuboids, 50 frames, 5 slow features), were chosen after careful testing from which we have found a balance between the computation time of the classifier and the accuracy obtained. One mentioned that must be made is that the system was run on a laptop with the following specifications, Intel Core i5 CPU - 480M and 2.67GHz, aspect that also influenced the overall computational time required. \\
+One optimization possible would be to select a smaller number of cuboids, from which to learn slow functions, by applying a PCA to the 100 cuboids extracted from each frame. An alternative optimization would be to parallelize both the extraction of cuboids from each frame and the process of learning slow functions from each cuboid. One advantage of the second optimization suggested is that the shortening of the computation time should be dramatical, thus allowing us to extend the amount of data we extract in each step, which would surely lead to an increase in the overall accuracy obtained. None of the proposed optimizations were further investigated for the purpose of this project, due to lack of time.\\
+
+%CONFUSION MATRIX OF RESULTS????
+
+\clearpage
+
+% /////////// CONCLUSION CHAPTER //////////////
+\chapter{Conclusion}
+%EXTEND IF WE DON'T REACH 14000 WORDS FOLLOWING THE MODEL OF ANDREW CHAMBERS
+Over the course of this project, we have developed, tested and demonstrated on an automatic human activity analysis, based on the Slow Function Analysis Technique \cite{main} approach, that is able to recognize three human activities such as: `walking', `running' and `hand-clapping'. The resulting system has proven to be a reasonably accurate system, with an accuracy of 82.35\%, obtained across a varied and sometimes challenging testing set, which has rendered some interesting and sometimes unexpected results, thus proving a successful experimentation technique. \\
+However, the system has shown some weaknesses over the course of the experimentation phase, shown especially by the last two described experiments. The first weakness discovered is that, in order to achieve a suitable accuracy for the system, a sufficient amount of data needs to be provided. From the observations made, we can determine that the minimal amount of data required is 100 video samples, which greatly extends the computational time required for the processing and analysis of this amount of data. Another weakness we have identified is that the system shows quite a great amount of sensitivity to light variations occurring in the environment, while showing only a slight decrease in accuracy for cases where the clothes of the person executing the activity blend with the background. Furthermore, event though two activities can be performed during the same video recording, the system will always recognize the one that is most executed, or is the most similar to the training examples.\\
+Unfortunately, at the current moment the resulting human activity analysis system could not be integrated into a larger system, due to the extensive computation time it requires to classify an activity. Despite this, it is our strong belief that after implementing the proposed optimizations, the system would show a great improvement and would prove capable of functioning in a greater application. \\
+Having presented all the flaws and strengths of the project, we can safely state that the majority of the project's goals have been achieved. As such, the project can be considered a success. \\
+
+\section{Further Work}
+A system for recognizing human activities offers a great first step for many computer vision systems. The method presented during this report is a Supervised Slow Feature Analysis technique, which can be further improved by implementing a Discriminative SFA or a Spatial Discriminative SFA. 
+While a Supervised SFA labels the collected local cuboids by each action type and then moves on to learning slow feature functions for each activity category independently. The Discriminative SFA approach learns a number of sets of functions, which are then used to slowdown a specific action class. Therefore, each set of functions makes its intraclass signals vary slowly and all the other intraclass signal, that are different from its class, vary quickly.\\ 
+A Spatial Discriminative SFA, separates the human body into two regions, along the x-axis, underlying the symmetry of the human body, and three more regions along the y-axis, corresponding to the upper body, the waist and the lower body. Thus, giving the extracted cuboids and extra set of labels, besides the label corresponding to the action category. The process continues with the extraction of slow feature functions, that are then collected together for each region, to compute the feature vector for the classification. \\
+All the presented techniques have shown an improvement in accuracy, as compared to the accuracy obtained for the Supervised SFA, approach implemented for this project. \\
+One final idea would be enable the system to record the testing video using a mobile device, as opposed to the current web-camera implementation. This extra feature, was initially part of the system, but due to lack of time and more important parts of the system having to be improved, it was abandoned. Despite this, the matter was researched thoroughly, having implemented the function designed to manage the communication with the Android application, IP Webcam, that captures frames using the camera of the mobile device and sends them to the local computer. (see Appendix B)\\
+
+\clearpage
+
+% //////////// BIBLIOGRAPHY CHAPTER ////////////
+\bibliographystyle{unsrt}
+\bibliography{report}
+
+\clearpage
+
+% //////////// APPENDIXES CHAPTER //////////////
+\chapter*{Appendices}
+\section{Appendix A}
+
+\subsection{Hierarchical Hidden Markov Model}
+The following figure, comes as an additional illustration of a Hierarchical Hidden Markov Model, as it was described in Chapter 2, section describing Statistical approaches. The model presented is composed of two layers. The lower layer HMMs are used to recognize the atomic activities, such as `stretching' and `withdrawing'. The higher layer of HMMs treat the results of the lower layer as a input and are thus able to recognize the action of `punching' as being the action of `stretching', followed by a `withdrawing' action. 
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=0.8\textwidth]{hierarchical-hmm.png}
+    \caption{This figure shows an example of a Hierarchical Hidden Markov Model for the action of `punching'.}
+    \label{fig:hierarchical-hmm}
+\end{figure}
+
+\section{Appendix B}
+%INCLUDE CODE OF FUNCTION SPEAKING TO THE ANDROID APPLICATION 
+
+\clearpage
+
+\end{document}
